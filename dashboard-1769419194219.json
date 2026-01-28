@@ -1,0 +1,1384 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2beta1",
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "MpmkYhRVz",
+    "namespace": "stacks-10076",
+    "uid": "9c423aad-bee8-485f-9334-b51ead290eaf",
+    "resourceVersion": "2013996025819168944",
+    "generation": 1,
+    "creationTimestamp": "2026-01-21T15:24:05Z",
+    "labels": {
+      "grafana.app/deprecatedInternalID": "886992307273728"
+    },
+    "annotations": {
+      "grafana.app/createdBy": "access-policy:service",
+      "grafana.app/folder": "bfaum06dbczy8c",
+      "grafana.app/managedBy": "classic-file-provisioning",
+      "grafana.app/managerId": "dashboard-grafanacloud-usage-insights-query-errors",
+      "grafana.app/sourceChecksum": "d6d20377fb7756575c83a04f400b6847",
+      "grafana.app/sourcePath": "/usr/share/grafana/conf/provisioning/dashboards/grafanacloud-usage-insights-query-errors/dashboard.json",
+      "grafana.app/sourceTimestamp": "1769008899000",
+      "grafana.app/folderTitle": "GrafanaCloud",
+      "grafana.app/folderUrl": "/dashboards/f/bfaum06dbczy8c/grafanacloud"
+    }
+  },
+  "spec": {
+    "annotations": [
+      {
+        "kind": "AnnotationQuery",
+        "spec": {
+          "builtIn": true,
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "query": {
+            "datasource": {
+              "name": "-- Grafana --"
+            },
+            "group": "grafana",
+            "kind": "DataQuery",
+            "spec": {},
+            "version": "v0"
+          }
+        }
+      }
+    ],
+    "cursorSync": "Off",
+    "description": "A dashboard for visualizing and analyzing query errors.",
+    "editable": false,
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "group": "",
+                      "kind": "DataQuery",
+                      "spec": {},
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": []
+            }
+          },
+          "description": "",
+          "id": 1,
+          "links": [],
+          "title": "How to use this dashboard",
+          "vizConfig": {
+            "group": "text",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "code": {
+                  "language": "plaintext",
+                  "showLineNumbers": false,
+                  "showMiniMap": false
+                },
+                "content": "**About:** This dashboard exists to help you find and understand errors occuring during data requests. \n\n**Search:** The search box above looks at the entire log line, and supports [some regex](https://grafana.com/docs/loki/latest/logql/log_queries/#log-stream-selector).\nTry searching for things like username, data source, or HTTP status code.\n\n**Categories:** The categories here are derived from common errors seen in various data sources. Use 'Explore' from the panel menu to see how we've achieved this. Save a copy of this dashboard so you can make edits and add your own categories.\n\n**Diving in:** The logs panel to the right is similar to what you'll find on the explore page. Click on the \"Explore Logs\" link if you'd like to interact with them there. Note that the category label won't be available in Explore.\n",
+                "mode": "markdown"
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      },
+      "panel-2": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "grafanacloud-annaurbiztondo-usage-insights"
+                      },
+                      "group": "loki",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "expr": "{instance_type=\"grafana\"} |= \"eventName=data-request\" |~ \"error=\\\".+\\\"\" |~ \"$search\"\n    # pop out error into error field and only look at those lines\n    | regexp `error=\"(?P<rawError>.+)\"`\n    \n    # trim leading and trailing whitespace\n    | label_format errorStr=`{{ regexReplaceAll \"^ | $\" .rawError \"\" }}`\n    # trim runs of spaces with a single space\n    | label_format errorStr=`{{ regexReplaceAll \"[ ]+\" .errorStr \" \" }}`\n    \n    # todo: maybe not so many labels\n    # backslashes and newlines make regex hurt even more\n    | label_format error=`{{ replace \"\\\\n\" \" \" .errorStr | lower }}`\n    | label_format error=`{{ regexReplaceAll \"[\\\\\\\\]\" .error \"\" }}`\n    | label_format error=`{{ regexReplaceAll \"^ | $\" .error \"\" }}`   \n    \n    # scrub URIs and TCP addresses\n    | label_format error=`{{ regexReplaceAll \"\\\"http[s|]://.+\\\"\" .error \"URI\"}}` \n    | label_format error=`{{ regexReplaceAll \"tcp .+:\" .error \"TCP\" }}`\n    \n    # categorize\n    | label_format errorClass=`{{ \"other\" }}`\n    \n    # timeouts\n    | label_format errorClass=`{{ if contains \"timeout\" .error }}{{\"timeout\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # bad request & invalid query\n    | label_format errorClass=`{{ if contains \"invalidquery\" .error }}{{\"bad request\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"parse error\" .error }}{{\"bad request\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"unsupported protocol scheme\" .error }}{{\"bad request\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"query error:\" .error }}{{\"bad request\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"invalid: compilation failed\" .error }}{{\"bad request\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"invalid: error @\" .error }}{{\"bad request\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"rror 400\" .error }}{{\"bad request\"}}{{else}}{{.errorClass}}{{end}}`\n\n    # errors from aggregated metrics\n    | label_format errorClass=`{{ if contains \"execution: can't query aggregated metric\" .error }}{{\"aggregation\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # too much data requested by query\n    | label_format errorClass=`{{ if contains \"maximum of series\" .error }}{{\"query too large\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"too many samples\" .error }}{{\"query too large\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"too many datapoints\" .error }}{{\"query too large\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"number of chunks\" .error }}{{\"query too large\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"exceeds max-points-per-req-hard limit\" .error }}{{\"query too large\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"query time range exceeds the limit\" .error }}{{\"query too large\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # too many requests\n    | label_format errorClass=`{{ if contains \"too many outstanding requests\" .error }}{{\"too many requests\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # server errors\n    | label_format errorClass=`{{ if contains \"server error\" .error }}{{\"server error\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"500\" .error }}{{\"server error\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"502\" .error }}{{\"server error\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"503\" .error }}{{\"server error\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # missing data\n    | label_format errorClass=`{{ if contains \"404\" .error }}{{\"missing resource\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"not found\" .error }}{{\"missing resource\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"no such host\" .error }}{{\"missing resource\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # authN/authZ\n    | label_format errorClass=`{{ if contains \"401\" .error }}{{\"authN/authZ\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"403\" .error }}{{\"authN/authZ\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"unauthorized\" .error }}{{\"authN/authZ\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"authenticate user\" .error }}{{\"authN/authZ\"}}{{else}}{{.errorClass}}{{end}}`\n    | label_format errorClass=`{{ if contains \"access denied\" .error }}{{\"authN/authZ\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # aborted requests\n    | label_format errorClass=`{{ if contains \"query error: -1 request was aborted\" .error }}{{\"query cancelled\"}}{{else}}{{.errorClass}}{{end}}`\n    \n    # logfmt the line so this panel is rich\n    | logfmt\n    | label_format level=\"err\"\n    \n    # scrub the line now\n    | line_format `category=\"{{.errorClass}}\", message=\"{{.errorStr}}\"`\n    \n    # since this query is huge and we don't want to be doing it multiple times, this allows for some convenience in the time series categories panel\n    | label_format hour=`{{.t | substr 0 14}}00`    \n    \n    # finally, filter\n    | errorClass=~\"$category\"",
+                        "legendFormat": "{{error}}",
+                        "queryType": "range"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "error count"
+                  }
+                }
+              ],
+              "queryOptions": {
+                "interval": "1h",
+                "maxDataPoints": 20
+              },
+              "transformations": []
+            }
+          },
+          "description": "This panel displays raw datasource errors from logs with a new category (`errorClass`) label attached. Categories are based on a set of regex rules to match common patterns.",
+          "id": 2,
+          "links": [],
+          "title": "Error Logs",
+          "vizConfig": {
+            "group": "logs",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              },
+              "options": {
+                "dedupStrategy": "none",
+                "enableInfiniteScrolling": false,
+                "enableLogDetails": true,
+                "prettifyLogMessage": false,
+                "showCommonLabels": false,
+                "showControls": false,
+                "showLabels": false,
+                "showLogAttributes": true,
+                "showTime": true,
+                "sortOrder": "Descending",
+                "wrapLogMessage": true
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      },
+      "panel-3": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
+                      "group": "datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "panelId": 2
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {
+                "interval": "1h",
+                "maxDataPoints": 20
+              },
+              "transformations": [
+                {
+                  "kind": "extractFields",
+                  "spec": {
+                    "id": "extractFields",
+                    "options": {
+                      "replace": true,
+                      "source": "labels"
+                    }
+                  }
+                },
+                {
+                  "kind": "filterFieldsByName",
+                  "spec": {
+                    "id": "filterFieldsByName",
+                    "options": {
+                      "include": {
+                        "names": [
+                          "errorClass"
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "calculateField",
+                  "spec": {
+                    "id": "calculateField",
+                    "options": {
+                      "mode": "reduceRow",
+                      "reduce": {
+                        "include": [
+                          "errorClass"
+                        ],
+                        "reducer": "count"
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "groupBy",
+                  "spec": {
+                    "id": "groupBy",
+                    "options": {
+                      "fields": {
+                        "Count": {
+                          "aggregations": [
+                            "sum"
+                          ],
+                          "operation": "aggregate"
+                        },
+                        "errorClass": {
+                          "operation": "groupby"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "sortBy",
+                  "spec": {
+                    "id": "sortBy",
+                    "options": {
+                      "sort": [
+                        {
+                          "desc": true,
+                          "field": "Count (sum)"
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "description": "This panel counts the log lines by (`errorClass`). This and all other panels use a query to the logs panel, to make the dashboard load faster.",
+          "id": 3,
+          "links": [],
+          "title": "Log Lines per Error Category",
+          "vizConfig": {
+            "group": "bargauge",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "#EAB839",
+                        "value": 50
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "displayMode": "lcd",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 10,
+                "minVizWidth": 0,
+                "namePlacement": "auto",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": true
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "color"
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      },
+      "panel-4": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
+                      "group": "datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "panelId": 2
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {
+                "interval": "1h",
+                "maxDataPoints": 20
+              },
+              "transformations": [
+                {
+                  "kind": "extractFields",
+                  "spec": {
+                    "id": "extractFields",
+                    "options": {
+                      "source": "labels"
+                    }
+                  }
+                },
+                {
+                  "kind": "filterFieldsByName",
+                  "spec": {
+                    "id": "filterFieldsByName",
+                    "options": {
+                      "include": {
+                        "names": [
+                          "errorClass",
+                          "hour"
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "calculateField",
+                  "spec": {
+                    "id": "calculateField",
+                    "options": {
+                      "alias": "",
+                      "mode": "reduceRow",
+                      "reduce": {
+                        "include": [
+                          "errorClass"
+                        ],
+                        "reducer": "count"
+                      },
+                      "replaceFields": false
+                    }
+                  }
+                },
+                {
+                  "kind": "groupBy",
+                  "spec": {
+                    "id": "groupBy",
+                    "options": {
+                      "fields": {
+                        "Count": {
+                          "aggregations": [
+                            "sum"
+                          ],
+                          "operation": "aggregate"
+                        },
+                        "errorClass": {
+                          "operation": "groupby"
+                        },
+                        "hour": {
+                          "operation": "groupby"
+                        },
+                        "time_5_min": {
+                          "operation": "groupby"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "convertFieldType",
+                  "spec": {
+                    "id": "convertFieldType",
+                    "options": {
+                      "conversions": [
+                        {
+                          "destinationType": "time",
+                          "targetField": "hour"
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "kind": "prepareTimeSeries",
+                  "spec": {
+                    "id": "prepareTimeSeries",
+                    "options": {
+                      "format": "many"
+                    }
+                  }
+                },
+                {
+                  "kind": "renameByRegex",
+                  "spec": {
+                    "id": "renameByRegex",
+                    "options": {
+                      "regex": "Count \\(sum\\) (.*)",
+                      "renamePattern": "$1"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "description": "",
+          "id": 4,
+          "links": [],
+          "title": "Error Categories per Hour",
+          "vizConfig": {
+            "group": "timeseries",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "palette-classic"
+                  },
+                  "custom": {
+                    "axisBorderShow": false,
+                    "axisCenteredZero": false,
+                    "axisColorMode": "text",
+                    "axisLabel": "",
+                    "axisPlacement": "auto",
+                    "barAlignment": 0,
+                    "barWidthFactor": 0.6,
+                    "drawStyle": "points",
+                    "fillOpacity": 0,
+                    "gradientMode": "none",
+                    "hideFrom": {
+                      "legend": false,
+                      "tooltip": false,
+                      "viz": false
+                    },
+                    "insertNulls": false,
+                    "lineInterpolation": "linear",
+                    "lineWidth": 1,
+                    "pointSize": 5,
+                    "scaleDistribution": {
+                      "type": "linear"
+                    },
+                    "showPoints": "always",
+                    "showValues": false,
+                    "spanNulls": true,
+                    "stacking": {
+                      "group": "A",
+                      "mode": "none"
+                    },
+                    "thresholdsStyle": {
+                      "mode": "off"
+                    }
+                  },
+                  "noValue": "0",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": []
+              },
+              "options": {
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "placement": "bottom",
+                  "showLegend": true
+                },
+                "tooltip": {
+                  "hideZeros": false,
+                  "mode": "single",
+                  "sort": "none"
+                }
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      },
+      "panel-5": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "-- Dashboard --"
+                      },
+                      "group": "datasource",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "panelId": 2
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {
+                "interval": "30ms"
+              },
+              "transformations": [
+                {
+                  "kind": "organize",
+                  "spec": {
+                    "id": "organize",
+                    "options": {
+                      "excludeByName": {
+                        "Time": true,
+                        "id": true,
+                        "labels": true,
+                        "tsNs": true
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "extractFields",
+                  "spec": {
+                    "id": "extractFields",
+                    "options": {
+                      "format": "kvp",
+                      "replace": true,
+                      "source": "Line"
+                    }
+                  }
+                },
+                {
+                  "kind": "calculateField",
+                  "spec": {
+                    "id": "calculateField",
+                    "options": {
+                      "mode": "reduceRow",
+                      "reduce": {
+                        "include": [
+                          "message"
+                        ],
+                        "reducer": "count"
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "groupBy",
+                  "spec": {
+                    "id": "groupBy",
+                    "options": {
+                      "fields": {
+                        "Count": {
+                          "aggregations": [
+                            "sum"
+                          ],
+                          "operation": "aggregate"
+                        },
+                        "category": {
+                          "operation": "groupby"
+                        },
+                        "message": {
+                          "operation": "groupby"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "organize",
+                  "spec": {
+                    "id": "organize",
+                    "options": {
+                      "renameByName": {
+                        "Count (sum)": "Count",
+                        "category": "Category",
+                        "message": "Message"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "description": "",
+          "id": 5,
+          "links": [],
+          "title": "Error Messages",
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": false,
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": true
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Count"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "mode": "basic",
+                          "type": "color-background"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "continuous-YlRd"
+                        }
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 80
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Category"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 116
+                      },
+                      {
+                        "id": "links"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Count"
+                  }
+                ]
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      },
+      "panel-6": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "grafanacloud-annaurbiztondo-usage-insights"
+                      },
+                      "group": "loki",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "expr": "topk(10, sum by (username) (count_over_time({instance_type=\"grafana\"} |= \"data-request\" |~ `error=\".+\"` |~ \"$search\" | regexp `username=(?P<username>[^ ]+ )` [$__range])))",
+                        "legendFormat": "{{username}}",
+                        "queryType": "instant"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": [
+                {
+                  "kind": "organize",
+                  "spec": {
+                    "id": "organize",
+                    "options": {
+                      "excludeByName": {
+                        "Time": true
+                      },
+                      "renameByName": {
+                        "Value #A": "Error Count",
+                        "username": "Username"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "description": "",
+          "id": 6,
+          "links": [],
+          "title": "Users",
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": false,
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Error Count"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "mode": "basic",
+                          "type": "color-background"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "continuous-YlRd"
+                        }
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 90
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Error Count"
+                  }
+                ]
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      },
+      "panel-7": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "grafanacloud-annaurbiztondo-usage-insights"
+                      },
+                      "group": "loki",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "expr": "topk(20, sum by (dashboardName, folderName) (\n    count_over_time({instance_type=\"grafana\"} \n        |= \"data-request\" |~ `error=\".+\"` |~ \"$search\" != \"dashboardId=0\"\n        | regexp `folderName=(?P<folderName>.+) dashboardName=(?P<dashboardName>.+) dashboardId=`\n        | label_format dashboardName=`{{replace \"\\\"\" \"\" .dashboardName}}`\n        | label_format folderName=`{{replace \"\\\"\" \"\" .folderName}}`\n[$__range])))",
+                        "legendFormat": "{{error}}",
+                        "queryType": "instant"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {
+                "interval": "30ms"
+              },
+              "transformations": [
+                {
+                  "kind": "organize",
+                  "spec": {
+                    "id": "organize",
+                    "options": {
+                      "excludeByName": {
+                        "Time": true,
+                        "dashboardId": true,
+                        "panelId": true
+                      },
+                      "indexByName": {
+                        "Time": 0,
+                        "Value #A": 3,
+                        "dashboardName": 1,
+                        "folderName": 2
+                      },
+                      "renameByName": {
+                        "Value #A": "Error Count",
+                        "dashboardName": "Name",
+                        "error": "Error",
+                        "folderName": "Folder"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "description": "",
+          "id": 7,
+          "links": [],
+          "title": "Dashboards",
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": false,
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Error Count"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "mode": "gradient",
+                          "type": "color-background"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "continuous-YlRd"
+                        }
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 90
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Folder"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 124
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Error Count"
+                  }
+                ]
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      },
+      "panel-8": {
+        "kind": "Panel",
+        "spec": {
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "hidden": false,
+                    "query": {
+                      "datasource": {
+                        "name": "grafanacloud-annaurbiztondo-usage-insights"
+                      },
+                      "group": "loki",
+                      "kind": "DataQuery",
+                      "spec": {
+                        "expr": "topk(10, sum by (name, id) (\n    count_over_time({instance_type=\"grafana\"} \n        |= \"data-request\" |~ `error=\".+\"` |~ \"$search\" !=\"-- Mixed --\" != \"-- Grafana --\"\n        | regexp `datasourceName=(?P<name>.+) datasourceId=(?P<id>.+) datasourceType=(?P<type>.+)`\n        | label_format name=`{{replace \"\\\"\" \"\" .name}}`\n[$__range])))",
+                        "legendFormat": "{{username}}",
+                        "queryType": "instant"
+                      },
+                      "version": "v0"
+                    },
+                    "refId": "A"
+                  }
+                }
+              ],
+              "queryOptions": {},
+              "transformations": [
+                {
+                  "kind": "organize",
+                  "spec": {
+                    "id": "organize",
+                    "options": {
+                      "excludeByName": {
+                        "Time": true
+                      },
+                      "renameByName": {
+                        "Value #A": "Error Count",
+                        "datasourceId": "ID",
+                        "datasourceName": "Name",
+                        "id": "ID",
+                        "name": "Name",
+                        "username": "Username"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "description": "",
+          "id": 8,
+          "links": [],
+          "title": "Data Sources",
+          "vizConfig": {
+            "group": "table",
+            "kind": "VizConfig",
+            "spec": {
+              "fieldConfig": {
+                "defaults": {
+                  "color": {
+                    "mode": "thresholds"
+                  },
+                  "custom": {
+                    "align": "auto",
+                    "cellOptions": {
+                      "type": "auto"
+                    },
+                    "filterable": false,
+                    "footer": {
+                      "reducers": []
+                    },
+                    "inspect": false
+                  },
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "color": "green",
+                        "value": 0
+                      },
+                      {
+                        "color": "red",
+                        "value": 80
+                      }
+                    ]
+                  }
+                },
+                "overrides": [
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "Error Count"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.cellOptions",
+                        "value": {
+                          "mode": "basic",
+                          "type": "color-background"
+                        }
+                      },
+                      {
+                        "id": "color",
+                        "value": {
+                          "mode": "continuous-YlRd"
+                        }
+                      },
+                      {
+                        "id": "custom.width",
+                        "value": 90
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "options": "ID"
+                    },
+                    "properties": [
+                      {
+                        "id": "custom.width",
+                        "value": 47
+                      }
+                    ]
+                  }
+                ]
+              },
+              "options": {
+                "cellHeight": "sm",
+                "showHeader": true,
+                "sortBy": [
+                  {
+                    "desc": true,
+                    "displayName": "Error Count"
+                  }
+                ]
+              }
+            },
+            "version": "12.4.0-21348434958"
+          }
+        }
+      }
+    },
+    "layout": {
+      "kind": "GridLayout",
+      "spec": {
+        "items": [
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-1"
+              },
+              "height": 11,
+              "width": 7,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-2"
+              },
+              "height": 11,
+              "width": 17,
+              "x": 7,
+              "y": 0
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-3"
+              },
+              "height": 9,
+              "width": 6,
+              "x": 0,
+              "y": 11
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-4"
+              },
+              "height": 9,
+              "width": 7,
+              "x": 6,
+              "y": 11
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-5"
+              },
+              "height": 9,
+              "width": 11,
+              "x": 13,
+              "y": 11
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-6"
+              },
+              "height": 9,
+              "width": 8,
+              "x": 0,
+              "y": 20
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-7"
+              },
+              "height": 9,
+              "width": 8,
+              "x": 8,
+              "y": 20
+            }
+          },
+          {
+            "kind": "GridLayoutItem",
+            "spec": {
+              "element": {
+                "kind": "ElementReference",
+                "name": "panel-8"
+              },
+              "height": 9,
+              "width": 8,
+              "x": 16,
+              "y": 20
+            }
+          }
+        ]
+      }
+    },
+    "links": [
+      {
+        "asDropdown": false,
+        "icon": "external link",
+        "includeVars": false,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": true,
+        "title": "Explore Logs",
+        "tooltip": "Search for matching logs in explore",
+        "type": "link",
+        "url": "/explore?left={\"datasource\":\"grafanacloud-ops-usage-insights\",\"queries\":[{\"datasource\":{\"type\":\"loki\",\"uid\":\"grafanacloud-usage-insights\"},\"editorMode\":\"code\",\"expr\":\"{instance_type%3D\\\"grafana\\\"} |%3D \\\"eventName%3Ddata-request\\\" |%3D \\\"error%3D\\\" |~ \\\"${search}\\\"\",\"queryType\":\"range\",\"refId\":\"A\"}],\"range\":{\"from\":\"now-7d\",\"to\":\"now\"}}&orgId=1"
+      },
+      {
+        "asDropdown": false,
+        "icon": "dashboard",
+        "includeVars": false,
+        "keepTime": true,
+        "tags": [],
+        "targetBlank": false,
+        "title": "Usage Insights Overview",
+        "tooltip": "",
+        "type": "link",
+        "url": "/d/XU8HAD5Gk/usage-insights-1-overview"
+      }
+    ],
+    "liveNow": false,
+    "preload": false,
+    "tags": [
+      "grafanacloud"
+    ],
+    "timeSettings": {
+      "autoRefresh": "",
+      "autoRefreshIntervals": [
+        "5s",
+        "10s",
+        "30s",
+        "1m",
+        "5m",
+        "15m",
+        "30m",
+        "1h",
+        "2h",
+        "1d"
+      ],
+      "fiscalYearStartMonth": 0,
+      "from": "now-24h",
+      "hideTimepicker": false,
+      "timezone": "browser",
+      "to": "now"
+    },
+    "title": "Usage Insights - 3 - Query Errors",
+    "variables": [
+      {
+        "kind": "TextVariable",
+        "spec": {
+          "current": {
+            "text": "",
+            "value": ""
+          },
+          "description": "Search for an error, user, datasource, or dashboard! Or all of them!",
+          "hide": "dontHide",
+          "label": "Search",
+          "name": "search",
+          "query": "",
+          "skipUrlSync": false
+        }
+      },
+      {
+        "kind": "CustomVariable",
+        "spec": {
+          "allowCustomValue": true,
+          "current": {
+            "text": "All",
+            "value": [
+              "$__all"
+            ]
+          },
+          "hide": "dontHide",
+          "includeAll": true,
+          "label": "Error Category",
+          "multi": true,
+          "name": "category",
+          "options": [],
+          "query": "other,bad request,query too large,server error,authN/authZ,timeout,too many requests,query cancelled,missing resource",
+          "skipUrlSync": false,
+          "valuesFormat": "csv"
+        }
+      }
+    ]
+  },
+  "status": {}
+}
